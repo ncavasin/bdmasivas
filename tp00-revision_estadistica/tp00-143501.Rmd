@@ -1,0 +1,620 @@
+---
+title: "TP000- Revisión Estadística"
+author: "Nicolas Cavasin"
+date: "9/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {r echo=FALSE}
+dataset <- read.csv("~/unlu/00_bd_masivas/01_tps/tp00-revision_estadistica/dataset.csv")
+```
+
+
+A partir del siguiente [dataset][0], se solicita trabajar sobre las siguientes consignas:
+
+[0]:https://www.kaggle.com/ophi/mpi/data
+
+### 1. Exploración de datos: 
+Explore y explique en que consiste el dataset utilizando herramientas de 
+exploración de datos.  
+
+#### a. Releve las características de los atributos.  
+``` {r 1a, echo=FALSE}
+str(dataset)
+```
+
+Se puede observar que el dataset consta de 984 entradas y representa el relevamiento
+de la pobreza mundial. Este hace uso de un índice desarrollado por la Universidad de Oxford, llamado [MPI][1] (por su acrónimo en inglés), el cuál permite tener en cuenta variables adicionales a la económica a la hora de determinar la pobreza y el grado de pobreza en el que se encuentra una persona.
+
+[1]: https://ophi.org.uk/multidimensional-poverty-index/
+
+> The global Multidimensional Poverty Index (MPI) is an international measure of acute multidimensional poverty covering over 100 developing countries. It complements traditional monetary poverty measures by capturing the acute deprivations in health, education, and living standards that a person faces simultaneously.
+
+Aquí los datos están agrupados en 8 columnas de la siguiente manera: 
+
+**1. Las primeras cuatro columnas son de tipo texto y representan:**
+
+
+- *ISO.country.code* -> Código ISO del país que lo representa unívocamente.  
+- *Country* -> Nombre del país.  
+- *Sub.national.region* -> Región del país (el equivalente a provincias en Argentina).  
+- *World.region* -> Región del mundo a la que pertence el país.  
+
+***Es importante destacar que las primeras tres columnas conforman la PK del dataset, pues permiten identificar unívocamente cualquier tupla.***
+
+**2. Las últimas cuatro columnas son de tipo numérico y representan:**  
+
+
+- *MPI.National* -> Valor del MPI nacional (formado por el agregado de todos los MPI regionales/provinciales de cada país). 
+- *MPI.Regional* -> Valor del MPI de una región/provincia.
+- *Headcount.Ratio.Regional* -> Porcentaje de la población que se considera pobre en la región/provincia.
+- *Intensity.of.deprivation.Regional* -> Promedio de distancia por debajo de la línea de la pobreza a la que se encuentra la gente listada como pobre.
+
+
+#### b. Represente gráficamente la cantidad de ciudades agrupados por región.  
+```{r 1b, echo=FALSE}
+pie(table(dataset$World.region), 
+    col=rainbow(6), 
+    main="Cantidad de ciudades por región mundial")
+
+par(mar = c(4, 12, 3, 1))
+barplot(table(dataset$World.region), 
+        xlab="Cantidad de ciudades relevadas", xlim = c(0, 500), 
+        ylab = "",
+        main="Cantidad de ciudades por región mundial", col=rainbow(6),
+        horiz = TRUE, beside = TRUE,
+        las = 1)
+```
+  
+### 2. Medidas de posición:
+Calcule las medidas de posición para los atributos numéricos y agrupe los
+cálculos de acuerdo a la región.  
+
+   
+#### a. Ordene los resultados del MPI resultante y concluya al respecto.  
+
+Media, ordenada por región mundial, del MPI nacional:
+``` {r medias-1, echo=FALSE}
+nat_mean <- aggregate(dataset$MPI.National ~ dataset$World.region, FUN=mean)
+
+med <- c("VALOR PROMEDIO", mean(dataset$MPI.National, na_rm = TRUE))
+nat_mean <- rbind(nat_mean, med)
+
+ord_nat_mean <- nat_mean[order(nat_mean[, 2]), ]
+ord_nat_mean
+
+```
+
+Media, ordenada por región mundial, del MPI regional:
+``` {r medias-2, echo=FALSE}
+reg_mean <- aggregate(dataset$MPI.Regional ~ dataset$World.region, FUN=mean)
+
+med <- c("VALOR PROMEDIO", mean(dataset$MPI.Regional, na_rm = TRUE))
+reg_mean <- rbind(reg_mean, med)
+
+ord_reg_mean <- reg_mean[order(reg_mean[, 2]), ]
+ord_reg_mean
+```
+
+Media, ordenada por región mundial, del porcentaje de gente pobre según el MPI regional:
+``` {r medias-3, echo=FALSE}
+hcr_mean <- aggregate(dataset$Headcount.Ratio.Regional ~ dataset$World.region, FUN=mean)
+
+med <- c("VALOR PROMEDIO", mean(dataset$Headcount.Ratio.Regional, na.rm = TRUE))
+hcr_mean <- rbind(hcr_mean, med)
+
+ord_hcr_mean <- hcr_mean[order(hcr_mean[, 2]),]
+ord_hcr_mean
+```
+
+Media, ordenada por región mundial, en la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+``` {r medias-4, echo=FALSE}
+iod_mean <- aggregate(dataset$Intensity.of.deprivation.Regional ~ dataset$World.region, FUN=mean)
+
+med <- c("VALOR PROMEDIO", mean(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE))
+iod_mean <- rbind(iod_mean, med)
+
+ord_iod_mean  <- iod_mean[order(iod_mean[, 2]), ]
+ord_iod_mean
+```
+
+
+**Observaciones:**
+
+
++ Tanto en el ``MPI nacional`` como en el ``MPI regional``, las dos regiones del mundo que se encuentran por debajo de la media son ``África Sub-Sahariana`` y ``Sur de Asia``.
+
++ En el porcentaje de gente pobre, se repite la ocurrencia -también por debajo de la media- de las dos regiones anteriormente mencionadas y, llamativamente, se suma la región ``Europa y Asia central``.
+
+*Nota:* la aparición de ``Europa y Asia central`` por debajo de la media puede deberse a la baja cantidad de datos relevados acerca de dicha región. No es un dato menor, pues en un conjunto de (e.g) diez valores, un solo outlier puede afectar severamente su media.
+
++ Por último, en la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza, se repiten ``África Sub-Sahariana`` y ``Sur de Asia`` también por debajo de la media.
+
+___
+
+
+Mediana, ordenada por región mundial, del MPI nacional:
+```{r medianas-1, echo=FALSE}
+# Get the median of every numeric column
+nat_median <- aggregate(dataset$MPI.National ~ dataset$World.region, FUN=median)
+
+mediana <- c("VALOR MEDIANA", median(dataset$MPI.National, na_rm = TRUE))
+nat_median <- rbind(nat_median, mediana)
+
+nat_median[order(nat_median[, 2]), ]
+```
+
+Mediana, ordenada por región mundial, del MPI regional/provincial:
+```{r medianas-2, echo=FALSE}
+reg_median <- aggregate(dataset$MPI.Regional ~ dataset$World.region, FUN=median) 
+
+mediana <- c("VALOR MEDIANA", median(dataset$MPI.Regional, na.rm = TRUE))
+reg_median <- rbind(reg_median, mediana)
+
+reg_median[order(reg_median[, 2]), ]
+```
+
+Mediana, ordenada por región mundial, del porcentaje de gente pobre según el MPI regional/provincial:
+```{r medianas-3, echo=FALSE}
+hcr_median <- aggregate(dataset$Headcount.Ratio.Regional ~ dataset$World.region, FUN=median)
+
+mediana <- c("VALOR MEDIANA", median(dataset$Headcount.Ratio.Regional, na_rm = TRUE))
+hcr_median <- rbind(hcr_median, mediana)
+
+hcr_median[order(hcr_median[, 2]), ]
+```
+
+
+Mediana, ordenada por región mundial, de la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+```{r medianas-4, echo=FALSE}
+iod_median <- aggregate(dataset$Intensity.of.deprivation.Regional ~ dataset$World.region,
+                        FUN=median) 
+
+mediana <- c("VALOR MEDIANA", median(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE))
+iod_median <- rbind(iod_median, mediana)
+
+iod_median[order(iod_median[, 2]), ]
+```
+
+
+**Observaciones:**
+
+
++ Se sospecha la existencia de un sesgo en el ``MPI nacional`` y en el ``MPI regional`` respecto a la mediana de la distribución, pues las regiones ``África Sub-Sahariana`` y ``Sur de Asia`` se encuentran bastante lejos de la misma.
+
++ En el porcentaje de gente pobre, se repite con ``Europa y Asia central`` lo mismo que ocurrió con la media, se la encuentra por debajo de la mediana. Esta vez, acompañada de ``Latinoamérica y el Caribe``. Sospecha de sesgo.
+
++ En la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza, reinciden ``África Sub-Sahariana`` y ``Sur de Asia`` por debajo de la mediana. 
+
+___
+
+
+Moda, ordenada por región mundial, del MPI nacional:
+```{r modas-1, echo=FALSE}
+library(modeest)
+
+# Get the mode of every numeric column
+nat_mfv <- aggregate(dataset$MPI.National ~ dataset$World.region, FUN=mfv)
+
+moda <- c("VALOR MODA", mfv(dataset$MPI.National, na_rm = TRUE))
+nat_mfv <- rbind(nat_mfv, moda)
+
+nat_mfv[order(nat_mfv[, 2]), ]
+```
+
+Moda, ordenada por región mundial, del MPI regional:
+```{r modas-2, echo=FALSE}
+reg_mfv <- aggregate(dataset$MPI.Regional ~ dataset$World.region, FUN=mfv1)
+
+moda <- c("VALOR MODA", mfv(dataset$MPI.Regional, na_rm = TRUE))
+reg_mfv <- rbind(reg_mfv, moda)
+
+reg_mfv[order(reg_mfv[, 2]),]
+```
+
+Moda, ordenada por región mundial, del porcentaje de gente pobre según el MPI regional:
+```{r modas-3, echo=FALSE}
+hcr_mfv <- aggregate(dataset$Headcount.Ratio.Regional ~ dataset$World.region, FUN=mfv1)
+
+moda <- c("VALOR MODA", mfv(dataset$Headcount.Ratio.Regional, na_rm = TRUE))
+hcr_mfv <- rbind(hcr_mfv, moda)
+
+hcr_mfv[order(hcr_mfv[, 2], decreasing = TRUE), ]
+```
+
+Moda, ordenada por región mundial, de la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+```{r modas-4, echo=FALSE}
+iod_mfv <- aggregate(dataset$Intensity.of.deprivation.Regional ~ dataset$World.region, FUN=mfv1)
+
+moda <- c("VALOR MODA", mfv(dataset$Intensity.of.deprivation.Regional, na_rm = TRUE))
+iod_mfv <- rbind(iod_mfv, moda)
+
+iod_mfv[order(iod_mfv[, 2], decreasing = TRUE), ]
+```
+
+**Observaciones:**
+
+***La obtención de la moda ha sido modificada utilizando la funcion ``mfv1()`` en lugar de ``mfv()``.*** Esto se debe a que el dataset cuenta con varias modas y el valor retornado con ``mfv()`` era un vector en vez de un escalar.
+
+
++ La moda del ``MPI regional`` es un valor muy bajo.
+
++ La región ``Europa y Asia central`` posee cinco o más modas en cada variable analizada. Es probable que la causa de lo observado sea la poca cantidad de datos relevados, provocando esto la inexistencia de valores repetidos en alguna tupla.
+
++ ``África Sub-Sahariana`` es la región mundial más relevada y a la vez tiene ocho modas en su ``MPI regional``. Además, presenta gran amplitud entre la moda mínima y la máxima. Estas observaciones sugieren un gran contraste de realidades entre los habitantes de la región.
+
+___
+
+
+**CONCLUSIONES:**
+
+
++ Se confirma la existencia de un sesgo hacia la derecha sobre la distribución normal de la variable ``MPI nacional``, demostrado tanto por la mediana como la moda. En otras palabras, hay más países pobres que ricos en este dataset.
+
++ De igual manera, se confirma también la existencia de un sesgo hacia la derecha sobre la distribución normal de la variable ``MPI regional`` A diferencia del anterior, este es muy marcado. La moda del ``MPI regional`` es el menor valor de todos que puede tomar la variable, lo que indica que hay muchas regiones por país donde habita gente pobre.
+
++ Respecto al porcentaje de gente pobre, determinado por el ``MPI regional``, se observa la repetición de las mismas regiones mundiales ``África Sub-Sahariana`` y ``Sur de Asia`` siempre por debajo de las medidas de posición. Esto indica que gran parte de la gente pobre vive en dichas regiones del mundo.
+
++ Por último, la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza, tiene un cierto sesgo hacia la derecha pero no tan pronunciado como los dos anteriores. Esto indica que de todas las personas relevadas, afortunadamente son pocas las que se encuentran muy por debajo de la línea de la pobreza.
+
+
+#### b. Grafique las variables y observe su comportamiento.  
+```{r mpi-por-pais, echo=FALSE}
+
+# barplot(table(dataset$MPI.National), xlab="Valor MPI", ylab="Eje y", ylim = c(0, 40), main="Comportamiento del MPI por país")
+
+hist(dataset$MPI.National, nclass = 20, 
+     xlab="Valor MPI nacional", xlim = c(0, 0.7),
+     ylab="Frecuencia", ylim = c(0, 250), 
+     main = "Comportamiento del MPI nacional")
+
+```
+
+```{r mpi-por-region, echo=FALSE}
+
+
+# barplot(table(dataset$MPI.Regional), 
+#         xlab = "Valor MPI", 
+#         ylim = c(0, 12),
+#         main = "Comportamiento del MPI por región de cada país")
+
+hist(dataset$MPI.Regional, nclass = 20, 
+     xlab = "Valor MPI regional", xlim = c(0, 0.8), 
+     ylab = "Frecuencia", ylim = c(0, 250), 
+     main = "Comportamiento del MPI regional")
+
+```
+
+```{r porcentaje-de-gente-pobre, echo=FALSE}
+
+# barplot(table(dataset$Headcount.Ratio.Regional),
+#         xlab = "Valor del ", 
+#         main = "% de gente pobre por región nacional")
+
+hist(dataset$Headcount.Ratio.Regional, nclass = 20, 
+     xlab = "Valor del %", 
+     ylab = "Frecuencia", ylim = c(0, 130), 
+     main = "Porcentaje de gente pobre por región nacional")
+
+```
+
+
+```{r gente-debajo-de-la-pobreza, echo=FALSE}
+
+# barplot(table(dataset$Intensity.of.deprivation.Regional),
+#         xlab = "Valor de distancia promedio", 
+#         ylim = c(0, 12), 
+#         main = "Distancia promedio por debajo del MPI regional")
+
+hist(dataset$Intensity.of.deprivation.Regional, nclass = 20, 
+     xlab = "Valor de distancia promedio", xlim = c(30, 80), 
+     ylab = "Frecuencia", ylim = c(0, 140), 
+     main = "Distancia promedio por debajo del MPI regional")
+
+```
+
+**Observación:**  
+
++ Los histogramas confirman lo planteado en las conclusiones anteriores y evidencian la gravedad del sesgo negativo respecto al porcentaje de gente pobre encontrada en el relevamiento.
+
+  
+### 3. Medidas de dispersión: 
+Calcular la desviación estándar, la varianza y el rango para cada una de las variables.  
+
+Desviación estándar del MPI nacional:
+```{r desviacion-estandar-1, echo=FALSE}
+sd(dataset$MPI.National)
+```
+
+Desviación estándar del MPI regional:
+```{r desviacion-estandar-2, echo=FALSE}
+sd(dataset$MPI.Regional)
+```
+
+Desviación estándar del porcentaje de gente pobre según el MPI regional:
+```{r desviacion-estandar-3, echo=FALSE}
+sd(dataset$Headcount.Ratio.Regional, na.rm = TRUE)
+```
+
+Desviación estándar de la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+```{r desviacion-estandar-4, echo=FALSE}
+sd(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE)
+```
+___
+
+
+Varianza del MPI nacional:
+```{r varianza-1, echo=FALSE}
+var(dataset$MPI.National, na.rm = TRUE)
+```
+
+Varianza del MPI regional/provincial:
+```{r varianza-2, echo=FALSE}
+var(dataset$MPI.Regional)
+```
+
+Varianza del porcentaje de gente pobre según el MPI regional:
+```{r varianza-3, echo=FALSE}
+var(dataset$Headcount.Ratio.Regional, na.rm = TRUE, use = "pairwise.complete.obs")
+```
+
+Varianza de la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+```{r varianza-4, echo=FALSE}
+var(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE, use = "pairwise.complete.obs")
+```
+
+___
+
+
+Rango del MPI nacional:
+```{r rango-1, echo=FALSE}
+range(dataset$MPI.National, na.rm = TRUE)
+max(dataset$MPI.National, na.rm = TRUE) - min(dataset$MPI.National, na.rm = TRUE)
+```
+
+
+Rango del MPI regional:
+```{r rango-2, echo=FALSE}
+range(dataset$MPI.Regional, na.rm = TRUE)
+max(dataset$MPI.Regional, na.rm = TRUE) - min(dataset$MPI.Regional, na.rm = TRUE)
+```
+
+Rango del porcentaje de gente pobre según el MPI regional:
+```{r rango-3, echo=FALSE}
+range(dataset$Headcount.Ratio.Regional, na.rm = TRUE)
+
+max(dataset$Headcount.Ratio.Regional, na.rm = TRUE) - 
+  min(dataset$Headcount.Ratio.Regional, na.rm = TRUE)
+```
+
+Rango de la distancia promedio a la que se encuentra la gente pobre respecto de la línea de pobreza:
+```{r rango-4, echo=FALSE}
+range(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE)
+max(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE) -
+  min(dataset$Intensity.of.deprivation.Regional, na.rm = TRUE)
+```
+
+
+#### a. Realice diagramas de cajas y scatterplot's. Documente las conclusiones.  
+```{r diagrama-de-cajas-y-puntos-1, echo=FALSE}
+par(mar = c(12, 4, 3, 1))
+
+boxplot(dataset$MPI.National ~ dataset$World.region, 
+        xlab = "", 
+        ylab = "MPI nacional", ylim = c(0.0, 0.8),
+        main = "Comportamiento del MPI nacional",
+        las = 2)
+
+boxplot(dataset$MPI.Regional ~ dataset$World.region,
+        xlab = "", 
+        ylab = "MPI regional", ylim = c(0.0, 0.8),
+        main = "Comportamiento del MPI regional",
+        las = 2)
+
+boxplot(dataset$Headcount.Ratio.Regional ~ dataset$World.region, 
+        xlab = "", 
+        ylab = "Porcentaje de gente pobre", 
+        main = "Porcentaje de gente pobre por región mundial",
+        las = 2)
+
+boxplot(dataset$Intensity.of.deprivation.Regional ~ dataset$World.region, 
+        xlab = "", 
+        ylab = "Distancia promedio", ylim = c(30, 80),
+        main = "Distancia promedio de gente por debajo del MPI regional",
+        las = 2)
+```
+
+___
+
+
+```{r diagrama-de-cajas-y-puntos-2, echo=FALSE}
+plot(dataset$MPI.National, dataset$MPI.Regional, 
+     xlab = "MPI nacional", 
+     ylab = "MPI regional", 
+     col = "purple",
+     main = "MPI nacional vs MPI regional")
+
+plot(dataset$MPI.Regional, dataset$Headcount.Ratio.Regional, 
+     xlab = "MPI regional", 
+     ylab = "Porcentaje de gente pobre", 
+     col = "red",
+     main = "MPI regional vs Porcentaje de gente pobre")
+
+plot(dataset$MPI.Regional, dataset$Intensity.of.deprivation.Regional, 
+     xlab = "MPI regional", 
+     ylab = "Distancia promedio", 
+     col = "green",
+     main = "MPI regional vs Dist. promedio de gente debajo del MPI regional")
+
+plot(dataset$Headcount.Ratio.Regional, dataset$Intensity.of.deprivation.Regional, 
+     xlab = "Porcentaje de gente pobre", 
+     ylab = "Distancia promedio", ylim = c(0, 100),
+     col = "blue",
+     main = "Porcentaje de gente pobre vs Dist. promedio debajo del MPI regional")
+
+```
+
+**CONCLUSIONES:** 
+
++ La región con un ``MPI nacional`` más simétrico es ``Sur de Asia``, lo que implica que no hay grandes contrastes entre todos los países que la integran. Si continuamos la observación en el ``Porcentaje de gente pobre`` se detecta que lo mencionado ocurre porque a lo largo de la región los países poseen entre ~30% y ~60% de pobreza a pesar de tener máximos y mínimos muy amplios.
+
++ Con ``Asia del Este y el Pacífico`` ocurre algo , sin embargo la existencia de varios outliers vuelven asimétrica a la
+
++ Se refuerza lo concluído acerca del ``MPI nacional`` de ``África Sub-Sahariana``, y se justifica con el boxplot del ``MPI regional``. Esta región mundial posee un gran contraste de realidades entre sus habitantes pues es quién mayor rango tiene en dichas variables, tal como lo muestran los bigotes de ambos gráficos.
+
++ También se refuerza lo concluído con respecto a ``Europa y Asia central``. Sus datos no son representativos, pues se han relevado muy pocas ciudades en comparación con las demás regiones del mundo. 
+
++ Se observa que el ``MPI nacional`` para ``Estados Árabes`` tiene pocas regiones nacionales pobres, pues los cuartiles 3 y 4 
+
++ Respecto a la región ``Latinoamérica y el Caribe``, se observa la existencia de varios outliers negativos en las variables ``MPI regional`` y ``Porcentaje de gente pobre``, es decir, hacia el lado de la pobreza. A pesar de que existen ciudades que alcanzan ~75% de pobreza, son consideradas outliers porque el resto de las ciudades relevadas se hallan en muchas mejores condiciones. Esto justifica la aparición de la región -en algunas medidas de posición- por debajo de las mismas.
+
+
++ Se observa una correspondencia directamente proporcional -lineal en el gráfico- entre el ``MPI regional`` y el porcentaje de gente pobre, justamente porque la segunda está determinada por los valores de la primera. 
+
++ Algo similar ocurre entre ``MPI regional`` y ``Distancia promedio debajo del MPI regional``, porque también, tal como lo indica su nombre, están estrechamente relacionados al uno delimitar el otro. Gráficamente, la relación se visualiza lineal aunque no tan definida como la mencionada en el ítem anterior.
+
+
+#### b. ¿Qué variable es la que presenta mayor dispersión? Tenga en cuenta que cada variable puede estar expresada en diferentes unidades y magnitudes.  
+
+La variable con mayor dispersión es ``Porcentaje de gente pobre``.
+
+Tanto su varianza como su desviación estándar dan valores muy por encima de las demás variables.
+
+También ocurre lo mismo con su rango, que cubre la totalidad del rango válido de valores, siendo 0% su mínimo valor registrado y siendo 99% el máximo.
+
+Además, algo no menor, el cálculo de su desviación estándar y su varianza arrojan resultados exhorbitantes.
+  
+### 4. Medidas de asociación:
+Calcular el coeficiente de relación de todas las variables y explique el 
+resultado. ¿Qué tipo de gráficos describen mejor esta relación entre variables?
+
+Covarianza entre MPI nacional y MPI regional:
+```{r correlacion-de-variables-1, echo=FALSE}
+cor(dataset$MPI.National, dataset$MPI.Regional)
+```
+
+Covarianza entre MPI regional y porcentaje de gente pobre:
+```{r correlacion-de-variables-2, echo=FALSE}
+cor(dataset$MPI.Regional, dataset$Headcount.Ratio.Regional)
+```
+
+Covarianza entre MPI regional y distancia promedio de gente por debajo de la línea de pobreza:
+```{r correlacion-de-variables-3, echo=FALSE}
+cor(dataset$MPI.Regional, dataset$Intensity.of.deprivation.Regional, 
+    use = "na.or.complete")
+```
+
+Covarianza entre porcentaje de gente pobre y y distancia promedio de gente por debajo de la línea de pobreza:
+```{r correlacion-de-variables-4, echo=FALSE}
+cor(dataset$Headcount.Ratio.Regional, dataset$Intensity.of.deprivation.Regional, 
+     use = "na.or.complete")
+```
+
+**CONCLUSIONES:**
+
++ Tal como lo observamos en los scatterplots anteriores, y que ahora podemos confirmarlo gracias al cálculo del coeficiente de correlatividad para las 4 variables, ``MPI regional`` y ``Porcentaje de gente pobre`` son las más relacionadas, puesto que la primera afecta directamente la cantidad de gente que caerá en la segunda. Se reitera, el scatterplot de ambas es contundente.
+
++ En segundo lugar, se encuentra la relación entre ``MPI regional`` y ``Distancia promedio debajo del MPI regional`` también, directamente afectada por el valor del primero. Su scatterplot es similar al de la relación anterior, pero algo más disperso.
+
++ En tercer lugar se encuentra la relación entre ``Porcentaje de gente pobre`` y ``Distancia promedio debajo del MPI regional``, cuyo scatterplot es muy poco disperso y similar a una recta carente de pendiente.
+
++ En último lugar se encuentra la relación entre ``MPI nacional`` y ``MPI regional``, cuyo scatterplot es muy disperso.
+
+___
+
+
+
+```{r pares-de-coordenadas, echo=FALSE}
+library(MASS)
+# par(mar = c(3, 3, 3, 8))
+
+par(xaxt="n")
+african <- ifelse(dataset$World.region == "Sub-Saharan Africa", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = african, 
+         var.label = TRUE, 
+         main = "África Sub-Sahariana")
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+
+
+par(xaxt="n")
+arab_states <- ifelse(dataset$World.region == "Arab States", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = arab_states, 
+         var.label = TRUE, 
+         main = "Estados Árabes")
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+
+
+par(xaxt="n")
+east_asia <- ifelse(dataset$World.region == "East Asia and the Pacific", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = east_asia, 
+         var.label = TRUE, 
+         main = "Este de Asia y el Pacífico")
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+
+
+par(xaxt="n")
+europa <- ifelse(dataset$World.region == "Europe and Central Asia", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = europa, 
+         var.label = TRUE, 
+         main = "Europa y Asia central") 
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+
+
+par(xaxt="n")
+latam <- ifelse(dataset$World.region == "Latin America and Caribbean", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = latam, 
+         var.label = TRUE, 
+         main = "Latinoamérica y el Caribe") 
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+
+
+par(xaxt="n")
+south_asia <- ifelse(dataset$World.region == "South Asia", "red", "#b0b0b0")
+parcoord(dataset[5:8], 
+         col = south_asia, 
+         var.label = TRUE, 
+         main = "Sur de Asia") 
+par(xaxt="s")
+axis(1,
+     at= seq(1, 4),
+     labels = c("MPI nac.","MPI reg.", "Porcentaje de pobres", "Dist. prom."))
+```
+
+Tal como se mencionó anteriormente, los scatterplots -que aquí se consiguen ejecutando la función ``plot()``- son muy efectivos para mostrar las relaciones entre dos variables.
+
+También es muy útil el gráfico de coordenadas paralelas, conseguido al ejecutar la función ``parcoord()``. Estos son los que se pueden observar arriba de estos párrafos y permiten graficar varias variables en dos dimensiones y agruparlas (o no) por alguna categoría.
+
+
+
+
+
+
+
+
+Fin.
+
+
