@@ -1,0 +1,8 @@
+suicidios: https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016
+
+API BCRA: https://estadisticasbcra.com/api/documentacion
+
+IMDB: https://datasets.imdbws.com/
+
+virus chino: https://www.reddit.com/r/datasets/comments/exnzrd/coronavirus_datasets/
+
