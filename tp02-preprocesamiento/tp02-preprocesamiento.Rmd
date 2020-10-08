@@ -1,0 +1,1101 @@
+---
+title: "TP02 - Preprocesamiento"
+author: "Nicolas Cavasin"
+date: "1/10/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Cargo encuesta
+encuesta <- read.csv("~/data/encuesta_universitaria.csv")
+
+# Graficos comunes
+library(ggplot2)
+
+# Agrupamiento de graficos
+library(gridExtra)
+
+# Para imputar por hot deck
+library(VIM)
+
+# Para discretizar datos
+library(infotheo)
+
+library("gplots")
+library(RColorBrewer)
+
+# Para usar findCorrelation() en matrices de Coef de Pearson
+library("caret")
+
+# Para calcular moda
+library("modeest")
+
+# Para graficar heatmaps
+library(reshape2)
+
+# Para graficar biplots 
+library(devtools)
+library(ggbiplot)
+
+# Para graficar parcoords
+library(MASS)
+
+# Para poder aplicar decimal scaling (@ Juan Manuel Fernandez)
+escalado_decimal <- function(atributo) {
+  # Calculo el máximo valor absoluto
+  valor_maximo <- max(abs(atributo), na.rm = TRUE)
+  print(paste("Mayor:", valor_maximo))  # Averiguo la cantidad de dígitos
+  exponente <- ceiling(log10(valor_maximo))
+  print(paste("Exponente:", exponente))  # Calculo el factor de escala
+  factor_escala <- 10^exponente
+  print(paste("Factor de escala:", factor_escala))  # Escalo el atributo
+  atributo_escalado <- atributo/factor_escala
+  atributo_escalado
+}
+```
+
+## Limpieza de datos
+
+### 1. Datos faltantes:
+Se cuenta con el dataset *encuesta_universitaria.csv*, el cual posee valores faltantes para la variable ``tiempo_traslado``. Aplique los siguientes métodos a efectos de reemplazar esos valores:
+
+a. Verifique cual es la proporción de valores faltantes respecto a la cantidad total de instancias del dataset.
+
+```{r 1-a, echo=FALSE}
+# Sumo la cantidad de datos faltantes
+cantidad_faltantes <- sum(is.na(encuesta$X.Tiempo_Traslado.))
+# Obtengo cantidad de instancias
+cantidad_instancias <- nrow(encuesta)
+
+# Calculo proporcion de faltantes vs total de instancias
+prop_na_encuesta <- ((cantidad_faltantes * 100) / cantidad_instancias)
+sprintf("Los datos faltantes representan el %.f%% (%.2f) del dataset."
+        , round(prop_na_encuesta)
+        , prop_na_encuesta)
+sprintf("Eso equivale a %i tuplas sobre las %i totales"
+        , cantidad_faltantes
+        , cantidad_instancias)
+```
+
+
+b. Genere un nuevo atributo utilizando solo los registros con valores observados para el atributo.
+
+```{r 1-b, echo=FALSE}
+# Copio el dataset
+df_imputacion <- encuesta
+
+# Inserto una copia de la variable a imputar
+df_imputacion$original <- encuesta$X.Tiempo_Traslado.
+
+sprintf("El nuevo atributo ha sido creado.")
+```
+
+
+c. Genere un nuevo atributo en el que sustituya los valores faltantes por la media encontrada para el atributo.
+
+```{r 1-c, echo=FALSE}
+
+# Copio los datos a imputar por la media
+df_imputacion$imputado_media <- encuesta$X.Tiempo_Traslado.
+
+# Elimino el resto de las columnas
+df_imputacion <- df_imputacion[, -c(1:33)]
+
+# Calculo la media de los datos completos 
+promedio <- mean(encuesta$X.Tiempo_Traslado., na.rm = TRUE)
+
+# Muestro cuantos hay por imputar
+sprintf("Cantidad de valores a imputar por la media (%.2f): %.f"
+        , promedio
+        , sum(is.na(encuesta$X.Tiempo_Traslado.)))
+
+# Inserto la media en los datos a imputar que estan incompletos
+df_imputacion$imputado_media[is.na(df_imputacion$imputado_media)] <- promedio
+
+# Muestro que no quedo ninguno incompleto
+sprintf("Cantidad de valores a imputar por la media (%.2f): %.f"
+        , promedio
+        , sum(is.na(df_imputacion$imputado_media)))
+```
+
+
+d. Genere un nuevo atributo en el que sustituya los valores faltantes de acuerdo al método de “hot deck imputation".
+
+
+```{r 1-d, echo=FALSE}
+# Muestro cuantos hay por imputar
+sprintf("Cantidad de valores a imputar por hot deck: %.f"
+        , sum(is.na(encuesta$X.Tiempo_Traslado.)))
+
+# La funcion hot deck imputa todo el dataset, por lo tanto lo almaceno separado
+df_hotdeck <- hotdeck(encuesta)
+
+# Ahora selecciono la variable que me interesa y la agrego al ds_imputacion
+df_imputacion$imputado_hotdeck <- df_hotdeck$X.Tiempo_Traslado.
+
+# Muestro que no quedo ninguno incompleto
+sprintf("Cantidad de valores a imputar por hot deck: %.f"
+        , sum(is.na(encuesta$imputado_hotdeck)))
+
+```
+
+e. Analice los resultados encontrados a partir de la aplicación de los métodos anteriores. Compare los mismos realizando gráficos sobre los valores resultantes en cada caso.
+
+```{r 1-e, echo=FALSE, warning=FALSE}
+# Las grafico
+
+to_plot <- as.data.frame(cbind(df_imputacion$original, df_imputacion$imputado_media,
+                 df_imputacion$imputado_hotdeck))
+names(to_plot) <- c("original", "media", "hotdeck")
+
+
+
+
+ggplot(df_imputacion) +
+    ggtitle ("Comparación de imputaciones sobre 'Tiempo de traslado'") +
+    geom_density(aes(original), col = "black", na.rm = TRUE, linetype = "dashed") +
+    geom_density(aes(imputado_media), col = "blue") + 
+    geom_density(aes(imputado_hotdeck), col = "red") +
+    geom_vline(aes(xintercept=mean(original, na.rm = TRUE)), col = "green") +
+    geom_vline(aes(xintercept=median(original, na.rm = TRUE)), col = "purple") +
+    scale_colour_manual("Density", 
+                        values = c("red", "blue", "black", "green", "purple")) +
+    xlim(0, 150) +
+    xlab("Variables observadas") +
+    ylab("Densidad")
+```
+
+
+- A primera vista se observan dos cosas:
+
+  1. Evidente existencia de un sesgo negativo para ambas imputaciones y el valor original.
+  
+  2. La distribución imputada por la media (color azul) es la más "planchada" respecto a las otras dos observadas.
+
+
+- La imputación por la media (color azul) es la que otorga una distribución mas simétrica, por lo que es razonable que su curtosis se agudice cuánto más se acerque a dicha media (color verde).
+
+
+- Debido al método utilizado para imputar datos faltantes (vecinos cercanos), la distribución obtenida al imputar por hot deck (color rojo) es muy similar -por no decir idéntica- a la de la variable original (color negro punteado).
+
+
+- Gráficamente, lo que diferencia a la variable hot deck de la original es justamente el resultado del ḿétodo utilizado para imputar. La estimación de un valor en base a sus vecinos afecta los máximos y mínimos relativos pero continúa respetando la forma de la distribución original.
+
+### 2. Manejo de ruido:
+Para el dataset anterior, avance sobre las siguientes operaciones para los atributos numéricos (cuantitativos continuos):
+
+a. Verifique en primer lugar la distribución de los datos, utilice algún método gráfico para esto.
+
+```{r 2-a, echo=FALSE, warning=FALSE}
+
+p0 <- ggplot(encuesta, aes(x=X.Carrera.)) + 
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia", 
+        title = "Histograma de 'Id. de Carrera'") +
+    xlim(0, 50)
+
+p1 <- ggplot(encuesta, aes(x=X.Sede.)) + 
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia", 
+        title = "Histograma de 'Id. de Sede'") +
+    xlim(0, 13)
+
+grid.arrange(p0, p1, ncol = 2)
+
+p2 <- ggplot(encuesta, aes(x=X.Tiempo_Traslado.)) + 
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia", 
+        title = "Histograma 'Tiempo de traslado'")+
+    xlim(0, 500)
+
+p3 <- ggplot(encuesta, aes(x=X.Cantidad_Grupo_Familiar.)) + 
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia", 
+        title = "Histograma de 'Grupo familiar'") +
+    xlim(0, 15)
+
+grid.arrange(p2, p3, ncol = 2)
+
+```
+
+b. Realice un suavizado utilizando *binning* por *frecuencias iguales* (con 5 bins) y estime el valor del bin por el cálculo de medias.
+
+```{r 2-b, echo=FALSE}
+# Discretizo cada variable en 5 bins de igual frecuencia y copio su valor original
+fq_carrera <- discretize(encuesta$X.Carrera., "equalfreq", 5)
+fq_carrera$original <- encuesta$X.Carrera.
+
+fq_sede <- discretize(encuesta$X.Sede., "equalfreq", 5)
+fq_sede$original <- encuesta$X.Sede.
+
+fq_tt <- discretize(encuesta$X.Tiempo_Traslado., "equalfreq", 5)
+fq_tt$original <- encuesta$X.Tiempo_Traslado.
+
+fq_gfam <- discretize(encuesta$X.Cantidad_Grupo_Familiar., "equalfreq", 5)
+fq_gfam$original <- encuesta$X.Cantidad_Grupo_Familiar.
+
+# Calculo la media de cada bin de cada variable
+for (bin in 1:5){
+  fq_carrera$suavizado[fq_carrera$X == bin] <- 
+    mean(fq_carrera$original[fq_carrera$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual frecuencia de 'Carrera'.")
+
+for (bin in 1:5){
+  fq_sede$suavizado[fq_sede$X == bin] <- 
+    mean(fq_sede$original[fq_sede$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual frecuencia de 'Sede'.")
+
+for (bin in 1:5){
+  fq_tt$suavizado[fq_tt$X == bin] <- 
+    mean(fq_tt$original[fq_tt$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual frecuencia de 'Tiempo de traslado'.")
+
+for (bin in 1:5){
+  fq_gfam$suavizado[fq_gfam$X == bin] <- 
+    mean(fq_gfam$original[fq_gfam$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual frecuencia de 'Grupo familiar'.")
+```
+
+c. Ahora, realice el suavizado por *anchos iguales* (con 5 bins) y compare los resultados gráficamente.
+
+```{r 2-c, echo=FALSE}
+# Discretizo cada variable en 5 bins de igual ancho
+wd_car <- discretize(encuesta$X.Carrera., "equalwidth", 5)
+wd_sede <- discretize(encuesta$X.Sede., "equalwidth", 5)
+wd_tt <- discretize(encuesta$X.Tiempo_Traslado., "equalwidth", 5)
+wd_gfam <- discretize(encuesta$X.Cantidad_Grupo_Familiar., "equalwidth", 5)
+
+# Agrego el valor original 
+wd_car$original <- encuesta$X.Carrera.
+wd_sede$original <- encuesta$X.Sede.
+wd_tt$original <- encuesta$X.Tiempo_Traslado.
+wd_gfam$original <- encuesta$X.Cantidad_Grupo_Familiar.
+
+# Calculo el promedio de cada bin de cada variable
+for (bin in 1:5){
+  wd_car$suavizado[wd_car$X == bin] <- 
+      mean(wd_car$original[wd_car$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual ancho de 'Carrera'.")
+
+for (bin in 1:5){
+  wd_sede$suavizado[wd_sede$X == bin] <-
+    mean(wd_sede$original[wd_sede$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual ancho de 'Sede'.")
+
+
+for (bin in 1:5){
+  wd_tt$suavizado[wd_tt$X == bin] <-
+    mean(wd_tt$original[wd_tt$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual ancho de 'Tiempo de traslado'.")
+
+for (bin in 1:5){
+  wd_gfam$suavizado[wd_gfam$X == bin] <-
+    mean(wd_gfam$original[wd_gfam$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha completado el suavizado por igual ancho de 'Grupo familiar'.")
+```
+
+
+```{r 2-c-graficos, echo=FALSE}
+# Grafico cada variable original y suavizada
+plot(sort(fq_carrera$original, decreasing = FALSE), type = "s", 
+    col = "green", 
+    xlab = "Valores",
+    ylab = "Carrera",
+    main = "Suavizado por igual frecuencia de 'Carrera'")
+lines(sort(fq_carrera$suavizado, decreasing = FALSE), col = "black")
+
+# Grafico cada variable original y suavizada
+plot(sort(wd_car$original, decreasing = FALSE), type = "s", 
+    col = "green", 
+    xlab = "Valores",
+    ylab = "Carrera",
+    main = "Suavizado por igual ancho de 'Carrera'")
+lines(sort(wd_car$suavizado, decreasing = FALSE), col = "black")
+
+
+plot(sort(fq_sede$original, decreasing = FALSE), type = "s", 
+    col = "green", 
+    xlab = "Valores",
+    ylab ="Sede",
+    main = "Suavizado por igual frecuencia de 'Sede'")
+lines(sort(fq_sede$suavizado, decreasing = FALSE), col = "black")
+
+plot(sort(wd_sede$original, decreasing = FALSE), type = "s", 
+    col = "green", 
+    xlab = "Valores",
+    ylab ="Sede",
+    main = "Suavizado por igual ancho de 'Sede'")
+lines(sort(wd_sede$suavizado, decreasing = FALSE), col = "black")
+
+
+plot(sort(fq_tt$original, decreasing = FALSE), type = "s", 
+    col = "green",
+    xlab = "Valores", 
+    ylab="Tiempo de traslado",
+    main = "Suavizado por igual frecuencia de 'Tiempo de traslado'")
+lines(sort(fq_tt$suavizado, decreasing = FALSE), col = "black")
+
+plot(sort(wd_tt$original, decreasing = FALSE), type = "s", 
+    col = "green",
+    xlab = "Valores", 
+    ylab="Tiempo de traslado",
+    main = "Suavizado por igual ancho de 'Tiempo de traslado'")
+lines(sort(wd_tt$suavizado, decreasing = FALSE), col = "black")
+
+
+plot(sort(fq_gfam$original, decreasing = FALSE), type = "s", 
+    col = "green",
+    xlab = "Valores",
+    ylab ="Cantidad por grupo familiar",
+    main = "Suavizado por igual frecuencia de 'Cantidad por grupo familiar'")
+lines(sort(fq_gfam$suavizado, decreasing = FALSE), col = "black")
+
+plot(sort(wd_gfam$original, decreasing = FALSE), type = "s", 
+    col = "green",
+    xlab = "Valores",
+    ylab ="Cantidad por grupo familiar",
+    main = "Suavizado por igual ancho de 'Cantidad por grupo familiar'")
+lines(sort(wd_gfam$suavizado, decreasing = FALSE), col = "black")
+
+```
+
+### 3. Detección de outliers:
+Ahora, trabaje sobre el mismo atributo del dataset original con las siguientes consignas:
+
+a. Verifique la existencia de *outliers* en el atributo ``tiempo_traslado`` en función del resto de los atributos. ¿En todos los casos se trata de un valor anómalo?
+
+```{r 3-a, echo=FALSE, warning=FALSE}
+
+ggplot(encuesta) +
+  geom_point(aes(x = X.Tiempo_Traslado., y = X.Medio_Transporte., col = "red"), 
+              show.legend = FALSE) +
+  xlab("Tiempo de traslado") +
+  ylab("Medio de transporte") +
+  ggtitle("Tiempo de traslado por Medio transporte.")
+
+ggplot(encuesta) +
+  geom_point(aes(x = X.Tiempo_Traslado., y = X.Influencia_Cercania., col = "green"), show.legend = FALSE) +
+  xlab("Tiempo de traslado") +
+  ylab("Influencia cercanía") +
+  ggtitle("Tiempo de traslado por Influencia cercanía.")
+
+```
+
+- Debido a que la variable en observación es *Tiempo de traslado* se decidió graficar las columnas que podrían estar relacionadas con la existencia de outliers en la misma.
+
+- Como se puede observar, la existencia del outlier coincide con el valor *Colectivo de media distancia* de la columna *Medios de transporte* así como también con el valor *Mucho* de la columna *Influencia por cercanía*.
+
+___
+
+
+b. Aplique las técnicas de análisis y detección vistas en clase: IRQ, SD (seleccione el N que mejor se adapte a su criterio) y Z-Score (seleccione el umbral que mejor se adapte a su criterio).
+
+
+
+```{r 3-b-basico, echo=FALSE, warning=FALSE}
+sprintf("Antes de comenzar a aplicar las técnicas sugeridas, se mostarán las medidas de posición y dispersión para tener una orientación mínima del comportamiento de este atributo en su estado original.")
+sprintf("Media %.2f.", mean(encuesta$X.Tiempo_Traslado., na.rm = TRUE))
+sprintf("Mediana %.2f.", median(encuesta$X.Tiempo_Traslado., na.rm = TRUE))
+sprintf("Moda %.2f.", mfv(encuesta$X.Tiempo_Traslado., na_rm = TRUE))
+sprintf("Desviación estándar %.2f.", sd(encuesta$X.Tiempo_Traslado., na.rm = TRUE))
+sprintf("Varianza %.2f.", v <- var(encuesta$X.Tiempo_Traslado., na.rm = TRUE))
+```
+
+___
+
+```{r 3-b-original, echo=FALSE, warning=FALSE}
+p0 <- ggplot(as.data.frame(encuesta$X.Tiempo_Traslado.), 
+        aes(y = encuesta$X.Tiempo_Traslado., 
+        x = seq(1, length(encuesta$X.Tiempo_Traslado.)))) + 
+        geom_step() +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("'Tiempo de traslado' original")
+
+p1 <- ggplot()+
+        geom_boxplot(aes(y = encuesta$X.Tiempo_Traslado., 
+                         x = seq(1, length(encuesta$X.Tiempo_Traslado.)))) +
+        stat_boxplot(aes(y = encuesta$X.Tiempo_Traslado., 
+                         x = seq(1, length(encuesta$X.Tiempo_Traslado.))), 
+                   geom ='errorbar') +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("'Tiempo de traslado' original")
+grid.arrange(p0, p1, ncol=2)
+```
+
+___
+
+
+***Técnica por IRQ***
+
+```{r 3-b-irq, echo=FALSE, warning=FALSE}
+# Calculo rango intercuartil
+ric <- IQR(encuesta$X.Tiempo_Traslado., na.rm = TRUE)
+sprintf("El IRQ de 'Tiempo de traslado' es %i.", ric)
+
+# Obtengo cuartiles
+cuartiles <- quantile(encuesta$X.Tiempo_Traslado., c(.25, .5, .75), 
+  na.rm = TRUE, type = 7)
+
+# Multiplico el cuartil 1 por -1.5 del IRQ (ric)
+# Esto me dará la barrera menor de valores validos
+ric_min <- as.numeric(cuartiles[1] - 1.5*ric)
+sprintf("La barrera mínima, aplicando IRQ, está ubicada en %i.", ric_min)
+
+# Multiplico el cuartil 3 por +1.5 del IRQ (ric)
+# Esto me dará la barrera mayor de valores validos
+ric_max <- as.numeric(cuartiles[3] + 1.5*ric)
+sprintf("La barrera máxima, aplicando IRQ, está ubicada en %i.", ric_max)
+
+# Selecciono los datos sin outliers
+ric <- encuesta$X.Tiempo_Traslado.[encuesta$X.Tiempo_Traslado. >= ric_min 
+                                  & encuesta$X.Tiempo_Traslado. <= ric_max]
+
+# Ordeno ascendientemente para graficar bien
+ric <- sort(ric, decreasing = FALSE)
+  
+p2 <- ggplot(as.data.frame(ric), aes(y = ric, x = seq(1, length(ric)))) + 
+        geom_step() +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("Sin outliers por IRQ")
+
+p3 <- ggplot()+
+        geom_boxplot(aes(y = ric, x = seq(1, length(ric)))) +
+        stat_boxplot(aes(y = ric, x = seq(1, length(ric))), geom ='errorbar') +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("Sin outliers por IRQ")
+grid.arrange(p2, p3, ncol=2)
+
+```
+
+
+***Observaciones:***
+
+- Es interesante que luego de aplicar la técnia por IRQ sobre la variable no hayan quedado outliers *válidos* o *no-ruidosos*. 
+
+- Esto se puede apreciar claramente en el boxplot de la derecha.
+
+- Dado que el atributo en cuestión posee una gran dispersión, se esperaba que haya algún valor cercano a las barreras mínimas y máximas, pero que esté por fuera, y cuente como un outlier "*válido*".
+
+___
+
+
+***Técnica por Desviación Estándar***
+
+```{r 3-b-sd, echo=FALSE, warning=FALSE}
+# Defino a cuantas desviaciones de la SD se considera un dato como outlier 
+desviaciones <- 2
+sprintf("[Criterio de desviaciones (N) = %i]", desviaciones)
+
+# Obtengo la sd
+de <- sd(encuesta$X.Tiempo_Traslado., na.rm = TRUE)
+sprintf("La SD de 'Tiempo de traslado' es %.2f.", de)
+
+# Defino barrera minima
+de_min <- mean(encuesta$X.Tiempo_Traslado., na.rm = TRUE) - desviaciones * de
+sprintf("La barrera mínima, aplicando SD, está ubicada en %.2f.", de_min)
+
+# Defino barrera maxima
+de_max <- mean(encuesta$X.Tiempo_Traslado., na.rm = TRUE) + desviaciones * de
+sprintf("La barrera máxima, aplicando SD, está ubicada en %.2f.", de_max)
+
+# Selecciono los valores sin outliers
+de <- encuesta$X.Tiempo_Traslado.[encuesta$X.Tiempo_Traslado. >= de_min 
+                                  & encuesta$X.Tiempo_Traslado. <= de_max]
+
+# Ordeno para graficar
+de <- sort(de, decreasing = FALSE)
+
+p4 <- ggplot(as.data.frame(de), aes(y = de, x = seq(1, length(de)))) + 
+        geom_step() +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("Sin outliers por SD")
+
+p5 <- ggplot()+
+        geom_boxplot(aes(y = de, x = seq(1, length(de)))) +
+        stat_boxplot(aes(y = de, x = seq(1, length(de))), geom ='errorbar') +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("Sin outliers por SD")
+
+grid.arrange(p4, p5, ncol=2)
+
+```
+
+
+***Observaciones:***
+
+- Utilizando la eliminación de outliers por Desviación Estándar, y a diferencia de la anterior, sí podemos observar la aparición de los outliers "*válidos*". 
+
+- Esto probablemente se deba a que el N = 2. Es decir, los valores considerados *ruidosos* son los que se encuentran por encima de +N SDs o -N SDs de la media. Como este atributo es muy disperso, es normal que haya valores a mayor o menor distancia que N SDs.
+
+- Por lo tanto, se entiende que la aparición de estos nuevos outliers es por haber establecido que N = 2. Si hubiese elegido N = 3 tal vez se repetiría lo mismo que con la técnica por IRQ.
+
+- Nuevamente, el boxplot es muy útil para visualizar esto.
+
+___
+
+
+***Técnica por Z-Score***
+
+```{r 3-b-zscore, echo=FALSE, warning=FALSE}
+# Calculo el zscore para la variable
+umbral <- 2
+sprintf("[Criterio de umbral = %i]", umbral)
+
+# Copio el dato, sin NAs, para facilitar la lectura en codigo
+dato <- na.omit(encuesta$X.Tiempo_Traslado.)
+
+# Calculo el z-score para cada valor del dato
+zscore <- ( (dato - mean(dato, na.rm = TRUE)) / sd(dato, na.rm = TRUE) )
+sprintf("Se ha calculado el Z-Score de 'Tiempo de traslado'.")
+
+# Obtengo los valores que esten dentro del umbral 
+zvalues <- dato[zscore >= -umbral & zscore <= umbral]
+sprintf("Se han seleccionado los valores que se encuentran dentro del umbral (%i; %i).", 
+        -umbral, umbral)
+
+# Ordeno los valores para graficar
+zvalues <- sort(zvalues, decreasing = FALSE)
+
+p6 <- ggplot(as.data.frame(zvalues), 
+             aes(y = zvalues, x = seq(1, length(zvalues)))) + 
+        geom_step() +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado") +
+        ggtitle("Sin outliers por Z-Score")
+
+p7 <- ggplot()+
+        geom_boxplot(aes(y = zvalues, x = seq(1, length(zvalues)))) +
+        stat_boxplot(aes(y = zvalues, x = seq(1, length(zvalues))), 
+                     geom ='errorbar')  +
+        xlab("Valores") + 
+        ylab("Tiempo de traslado")+
+        ggtitle("Sin outliers por Z-Score")
+
+grid.arrange(p6, p7, ncol=2)
+```
+
+***Observaciones:***
+
+- En el caso de esta técnica se notan resultados muy similares a los obtenidos previamente, sobretodo en cuanto a la aparición de outliers "*validos*" o *no-ruidosos*. 
+
+- El boxplot es muy similar al de la técnica por Desviación Estándar.
+
+- Se detecta sin embargo que el plot de ocurrencias parece estar apenas algo más "planchado" que el anterior.
+
+___
+
+c. Concluya respecto a los resultados obtenidos con cada técnica.
+
+***Nota:*** las conclusiones fueron puestas al pie de cada gráfico para facilitar el análisis.
+
+## Reduccion de dimensionalidad
+
+### 4. A partir del dataset *auto-mpg.data-original.txt*, se solicita trabajar sobre las siguientes consignas:
+
+
+```{r carga_dataset, echo=FALSE, warning=FALSE}
+autos <- read.table("~/data/auto-mpg.data-original.txt")
+```
+
+a. Evalúe la relación entre atributos a partir del coeficiente de correlación de Pearson y un análisis gráfico de *heatmap* para estudiar la posibilidad de eliminar redundancia en el dataset. En caso de corresponder, aplique las técnicas de Reducing Highly Correlated Columns trabajadas en clase.
+
+```{r 4a, echo=FALSE, warning=FALSE}
+
+# Elimino la columna que no es numerica y los NAs
+autos_filtrado <- na.omit(autos[, -ncol(autos)])
+
+# Calculo el coeficiente de Pearson
+autos_cor <- cor(autos_filtrado, use = "complete.obs")
+
+# Creo el formato para graficar
+plot_autos <- melt(autos_cor)
+
+# Renombro para cambiar como aparece en la leyenda
+names(plot_autos) <- c("Var1", "Var2", "Valores")
+
+# Grafico heatmap
+ggplot(plot_autos, aes(x = Var1, y = Var2, fill = Valores)) + 
+  geom_tile() +
+  geom_text(aes(label = round(Valores, 1))) +
+  scale_fill_gradientn(colours = rainbow(7), guide = "legend") +
+  labs(x = "", y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position = "right",
+    legend.key.size = unit(.75, "cm"),
+    legend.key.width = unit(0.75,"cm"), 
+    axis.ticks = element_blank(), 
+    axis.text.x = element_text(angle = 330, hjust = 0, colour = "black"),
+    axis.text.y = element_text(colour = "black")) 
+
+```
+
+- El heatmap se creó a partir de los resultados arrojados por la función ``cor()``, quién calcula el coeficiente de Pearson y determina qué tan relacionadas están dos variables.
+
+- A simple vista, solo por agrupamiento de colores, se observa que el heatmap posee una *sub-matriz* altamente relacionada (positiva y negativamente) entre las variables ``V1``-``V5``, ubicada en la esquina inferior izquierda
+
+- Sobre esta *sub-matriz* altamente relacionada se observa que:
+
+  1. La variable ``V1`` está muy relacionada *negativamente* con las variables ``V2``, ``V3``, ``V4`` y ``V5``.
+  
+  2. La variable ``V2`` está muy relacionada *positivamente* con las variables ``V3``, 
+  ``V4`` y ``V5``.
+  
+  3. Por último, se repite la relación *positiva* entre ``V3``, ``V4`` y ``V5``.
+  
+
+- Respecto el resto del heatmap, podemos decir que:
+
+  1. Las variables ``V2`` y ``V5`` casi no tienen relación con la variable ``V7``.
+  
+  2. Las duplas de variables (``V6``;``V7``), (``V6``;``V8``) y (``V7``;``V8``) son las menos relacionadas de todo el dataset.
+
+- Para confirmar lo observado, se utilizó la función ``findCorrelation()`` -perteneciente a la librería ``caret``- que se encargó de buscar los atributos con una correlación igual o mayor al parámetro que deseemos, en este caso 0.75.
+
+```{r 4a-ii, echo=FALSE}
+# Busco las relaciones en la matriz de Pearson calculada antes
+correlacionados <- findCorrelation(autos_cor, cutoff = .75)
+print(names(autos[ , correlacionados]))
+```
+
+___
+
+
+***Técnica Reducing Highly Correlated Columns:***
+
+- 
+
+___
+
+
+b. Verifique a través del Test de Chi-Cuadrado si existe dependencia entre pares de atributos discretos. Determine en qué casos es conveniente reducir dimensionalidad.
+
+```{r 4b, echo=FALSE}
+
+```
+
+
+### 5. Análisis de componentes principales:
+Cargue en R el dataset *europa.dat* y conteste las siguientes consignas a través de las funcionalidades provistas por esa herramienta:
+
+```{r lectura-europa.dat, echo=FALSE}
+europa <- as.data.frame(read.delim("~/data/europa.dat", sep = ""))
+```
+
+a. Calcule la matriz de covarianzas. ¿Qué nos indica la misma sobre los atributos del dataset?
+
+```{r 5a, echo=FALSE, warning=FALSE}
+# Calculo y muestro la matriz de covarianza
+cov_eur <- cov(europa)
+cov_eur_round <- round(cov_eur, digits = 2)
+cov_eur_round
+```
+
+- La matriz de covarianzas indica dos cosas:
+  
+  1. Qué tan dispersa está una variable comparada con otra en relación a sus respectivas medias.
+  
+  2. La varianza de cada componente en la diagonal principal.
+
+- En este caso, muestra que existe una gran dispersión y poca relación entre cada variable.
+
+- Para confirmar las correlaciones, se realizó el cálculo del *Coeficiente de correlación de Pearson* que normaliza y acota los valores. Luego se lo graficó como un *Heatmap*, tal como en punto 4 a).
+
+- Se ve fácilmente que sólo hay dos variables relacionadas, ``Agr`` y ``SSP``, y de manera negativa.
+
+
+```{r 5a-heatmap, echo=FALSE, warning=FALSE}
+# Calculo coef de pearson usando la matriz de covarianzas
+pearson_eur <- cov2cor(cov_eur)
+
+# Preparo la estructura para graficar
+plot_europa <- melt(pearson_eur)
+
+# Renombro para que aparezca bien la leyenda
+names(plot_europa) <- c("Var1", "Var2", "Valores")
+
+# Grafico heatmap
+ggplot(plot_europa, aes(x = Var1, y = Var2, fill = Valores)) + 
+  geom_tile() +
+  geom_text(aes(label = round(Valores, 1))) +
+  scale_fill_gradientn(colours = rainbow(7), guide = "legend") +
+  labs(x = "", y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position = "right",
+    legend.key.size = unit(.75, "cm"),
+    legend.key.width = unit(0.75,"cm"), 
+    axis.ticks = element_blank(), 
+    axis.text.x = element_text(angle = 330, hjust = 0, colour = "black"),
+    axis.text.y = element_text(colour = "black"))
+
+```
+
+___
+
+b. Realice ahora el análisis de componentes principales. ¿Cuánto explica de la variación total del dataset la primera componente? ¿Y si se incorpora la segunda? ¿Y el primer auto-valor?
+
+```{r 5b, echo=FALSE}
+# Normalizo el dataset y lo guardo como data frame
+europa_norm <- data.frame(scale(europa))
+
+# Realizo el analisis de CPs
+cps <- princomp(europa_norm, cor = F)
+
+# ESTO NO SE MUESTRA PERO ESTA BUENO SABER COMO SE CALCULA
+# # Obtengo autovalores y autovectores usando el pearson calculado antes
+# auto_val_vec <- eigen(cov_eur)
+
+# # Varianza de cada componente
+# cp_var <- round(auto_val_vec$values, digits = 3)
+
+# # Proporcion de varianza que aporta cada CP
+# prop_var <- cp_var / sum(cp_var)
+# round(prop_var, digits = 3)
+ 
+# # Proporcion de varianza que acumula cada CP
+# prop_var_acum <- cumsum(cp_var) / sum(cp_var)
+# round(prop_var_acum, digits = 3)
+ 
+# # Muestro los autovectores
+# round(auto_val_vec$vectors, digits = 3)
+
+# Muestro las CPs
+summary(cps)
+```
+
+- La primera componente explica el %30.9 de la variación.
+
+- Si se incorpora la segunda componente se explica un %24.9 adicional al explicado por la primera, alcanzando una varianza total del %55.83 del dataset.
+
+- El primer auto-valor indica que la primera componente principal captura una Desviación Estándar de 1.63 hacia ambos lados de la media.
+
+___
+
+
+c. Grafique el perfil de variación de las componentes en un gráfico de dispersión donde las X es la componente y la Y la varianza.
+
+```{r 5c, echo=FALSE}
+plot(cps, type = "l", 
+     ylim = c(0,3),
+     main = "Varianza según cada Componente Principal")
+```
+
+
+d. Analice la matriz de loadings. ¿Qué información provee? ¿Qué variables están más correlacionadas con la primera componente?
+
+```{r 5d, echo=FALSE}
+europa_loadings <- loadings(cps)
+europa_loadings
+```
+
+- La matriz de loadings muestra a qué variable está más asociada cada Componente Principal.
+
+- En el caso de la primera componente, la variable más asociada de manera directa es ``Agr`` con el %56, mientras que la mas asociada de manera indirecta es ``SSP`` con un %52.1.
+
+___
+
+
+e. Genere un gráfico de biplot y explique brevemente que información le provee el mismo.
+
+```{r 5e, echo=FALSE, warning=FALSE}
+b1 <- ggbiplot(cps, choices = c(1, 2),
+         pc.biplot = TRUE,
+         obs.scale = 1, var.scale = 1) +
+         scale_color_discrete(name = '') +
+         theme(legend.direction = 'horizontal', legend.position = 'top')
+
+b2 <- ggbiplot(cps, choices = c(3, 4), 
+         pc.biplot = TRUE,
+         obs.scale = 1, var.scale = 1) +
+         scale_color_discrete(name = '') +
+         theme(legend.direction = 'horizontal', legend.position = 'top')
+grid.arrange(b1, b2, ncol=2)
+
+# Los guardo por las dudas, pero no se grafican
+# par(mar = c(2, 0, 2, 0))
+# biplot(cps, 
+#        scale = 1, 
+#        col = c("red", "black"), 
+#        cex = c(.5, 0.75))
+# 
+# biplot(cps, 
+#        choices = 3:4,
+#        scale = 1, 
+#        col = c("red", "black"), 
+#        cex = c(.5, .75))
+```
+
+- Los gráficos biplot permite ver en dos dimensiones el comportamiento de las dos Componentes Principales seleccionados.
+
+- Muestran todos los valores que se corresponden con las observaciones para dichas CPs.
+
+___
+
+f. En función de los análisis realizados en los puntos anteriores. ¿Cuántas componentes principales elegiría para explicar el comportamiento del dataset? Justifique esa cantidad.
+
+- La cantidad de *Componentes Principales* a elegir es definido por la cantidad de varianza que estos acumulan, y por lo general se requiere una acumulación de ~80% o más. En el caso de este dataset se necesitan los primeros 4 *Componentes Principales* ya que acumulan el 84.51% de la varianza total
+
+
+## Transformación de datos
+
+### 6. Discretización:
+A  partir  del dataset *encuesta_universitaria.csv*, opere sobre el atributo ``tiempo_traslado`` de la siguiente manera:
+
+a. Transforme el atributo a discreto, definiendo 5 rangos de acuerdo al análisis de frecuencia de los valores encontrados para el atributo.
+
+```{r 6a, echo=FALSE}
+
+# Me copio el original
+tt <- encuesta$X.Tiempo_Traslado.
+
+# Lo discretizo eliminando NAs
+fq_tt <- discretize(na.omit(tt), disc="equalfreq", 5)
+sprintf("Se ha discretizado el atributo en 5 bins de igual frecuencia.")
+
+# Calculo la media de cada bin
+for (bin in 1:5){
+  fq_tt$discretizado[fq_tt$X == bin] <- mean(tt[fq_tt$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha calculado la media de cada bin.")
+```
+
+b. Transforme el atributo a discreto, definiendo 5 rangos de acuerdo al método de anchos iguales.
+
+```{r 6b, echo=FALSE}
+# Me copio el original
+tt <- encuesta$X.Tiempo_Traslado.
+
+# Lo discretizo eliminando NAs
+wd_tt <- discretize(na.omit(tt), disc="equalwidth", 5)
+sprintf("Se ha discretizado el atributo en 5 bins de igual ancho.")
+
+# Calculo la media de cada bin
+for (bin in 1:5){
+  wd_tt$discretizado[wd_tt$X == bin] <- mean(tt[wd_tt$X == bin], na.rm = TRUE)
+}
+sprintf("Se ha calculado la media de cada bin.")
+```
+
+c. Transforme el atributo a discreto, definiendo usted, según su criterio, 5 rangos distintos con sus respectivas etiquetas.
+
+```{r 6c, echo=FALSE}
+
+# Tabulo
+df_tt <- as.data.frame(table(encuesta$X.Tiempo_Traslado.))
+
+# Copio original
+orig <- na.omit(encuesta$X.Tiempo_Traslado.)
+
+# Creo 5 bins de 50
+bin_1 <- orig[orig >= 0 & orig < 50]
+bin_2 <- orig[orig >= 50 & orig < 100]
+bin_3 <- orig[orig >= 100 & orig < 150]
+bin_4 <- orig[orig >= 150 & orig < 200]
+bin_5 <- orig[orig >= 200 & orig <= 250]
+
+
+```
+
+
+d. Analice los resultados encontrados. Compare los mismos realizando gráficos de frecuencia sobre los intervalos resultantes en cada caso. ¿Qué conclusiones se pueden obtener en términos del balanceo de las mismas de acuerdo a la técnica utilizada?
+
+```{r 6d, echo=FALSE}
+#Gráfico de barras original
+t <- table(encuesta$X.Tiempo_Traslado.)
+dt <- as.data.frame(t)
+ggplot(dt, aes(x=Var1, y=Freq, fill=Var1)) +
+  geom_text(aes(label=Freq), vjust=-0.3, size=3.5)+
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  xlab("Valor discretizado") + ylab("Frecuencia observada") +
+  theme(legend.position = "none", 
+    axis.ticks = element_blank(), 
+    axis.text.x = element_text(angle = 300, hjust = 0, colour = "black"),
+    axis.text.y = element_text(colour = "black")) +
+    ggtitle("Tiempo de traslado sin discretizar") 
+
+#Gráfico de barras por igual frecuencia
+t <- table(fq_tt)
+dt <- as.data.frame(t)
+ggplot(dt, aes(x=discretizado, y=Freq, fill=discretizado)) +
+  geom_text(aes(label=Freq), vjust=-0.3, size=3.5)+
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  xlab("Valor discretizado") + ylab("Frecuencia observada") +
+  theme(legend.position = "none", 
+    axis.ticks = element_blank(), 
+    axis.text.x = element_text(angle = 330, hjust = 0, colour = "black"),
+    axis.text.y = element_text(colour = "black")) +
+  ggtitle("Discretizado por igual frecuencia") 
+
+#Gráfico de barras por igual ancho
+t <- table(wd_tt)
+dt <- as.data.frame(t)
+ggplot(dt, aes(x=discretizado, y=Freq, fill=discretizado)) +
+  geom_text(aes(label=Freq), vjust=-0.3, size=3.5)+
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  xlab("Valor discretizado") + ylab("Frecuencia observada") +
+  theme(legend.position = "none", 
+    axis.ticks = element_blank(), 
+    axis.text.x = element_text(angle = 330, hjust = 0, colour = "black"),
+    axis.text.y = element_text(colour = "black")) +
+  ggtitle("Discretizado por igual ancho")
+```
+
+
+- Conclusiones: 
+
+  1. La discretización por igual ancho no funcionó y no sé porqué. 
+  
+  2. La discretización por igual frecuencia dió una distribución deprimida hacia su centro, muy extraño.
+
+### 7. Normalización:
+A partir del dataset *encuesta_universitaria.csv*, opere sobre el atributo ``tiempo_traslado`` de la siguiente manera:
+
+
+a. Normalice el atributo utilizando la técnica de mínimo-máximo.
+```{r 7a, echo=FALSE}
+# Copio el dato
+tt <- as.data.frame(scale(na.omit(encuesta$X.Tiempo_Traslado.)))
+# Lo renombro
+names(tt) <- c("original")
+
+# Calculo max min
+mintt <- min(tt$original, na.rm = TRUE)
+maxtt <- max(tt$original, na.rm = TRUE)
+sprintf("Máximo = %.f. Mínimo = %.f", maxtt, mintt)
+
+# Calculo rango
+rtt <- maxtt - mintt
+sprintf("Rango = %.f.", rtt)
+
+# Normalizo
+for (i in (1:length(tt$original))){
+  tt$min_max_norm[i] <- (tt$original[i] - mintt) / rtt
+  
+}
+
+sprintf("Ha finalizado la normalización por la técnica Mínimo-Máximo.")
+```
+    
+b. Ahora, normalice el atributo mediante la técnica de Z-Score propuesta en el libro *Data Mining. Concepts & Techniques* de Jiawei Han & otros.
+    
+```{r 7b, echo=FALSE}
+# Obtengo la media
+mtt <- mean(tt$original)
+sprintf("Media = %.2f.", mtt)
+
+# Obtengo la desviacion estandar
+sdtt <- sd(tt$original, na.rm = TRUE)
+sprintf("Desviación estándar = %.2f.", sdtt)
+
+# Normalizo
+for(i in (1:length(tt$original))){
+  tt$zscore_norm[i] <- (tt$original[i] - mtt) / sdtt
+}
+
+sprintf("Ha finalizado la normalización mediante Z-Score.")
+```
+
+c. Por último, utilice la técnica de escalado decimal para llevar adelante la tarea de normalización.
+
+```{r 7c, echo=FALSE}
+# Normalizo 
+tt$decscale <- escalado_decimal(na.omit(encuesta$X.Tiempo_Traslado.))
+
+sprintf("Ha finalizado la normalización mediante Decimal Scaling.")
+
+```
+
+d. Analice los resultados encontrados. Compare los mismos realizando gráficos sobre los atributos resultantes en cada caso.
+
+```{r 7graficos, echo=FALSE, warning=FALSE}
+
+ggplot(encuesta, aes(X.Tiempo_Traslado.)) +
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia",
+        title = "Histograma de 'Tiempo de traslado' original") +
+    xlim(-1, 200)
+
+ggplot(tt, aes(min_max_norm)) +
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia",
+        title = "Histograma de 'Tiempo de traslado' normalizado por Min-Max") +
+  xlim(-0.01, 0.05)
+
+ggplot(tt, aes(zscore_norm)) +
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia",
+        title = "Histograma de 'Tiempo de traslado' normalizado por Z-Score") +
+  xlim(-1.5, 2)
+
+ggplot(tt, aes(decscale)) +
+    geom_histogram(aes(y=..density..), color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(x = "Variable observada",
+        y = "Frecuencia",
+        title = "Histograma de 'Tiempo de traslado' normalizado por Decimal Scaling") +
+  xlim(-0.01, .02)
+
+```
+
+- Las escalas sobre el eje x fueron modificadas para poder apreciar cada histograma acorde al resultado de cada técnica, a excepción del histograma original. 
+
+- Esto se debe a que diferentes técnicas generaron diferentes valores normalizados. Por ejemplo Decimal Scaling genera valores muy pequeños al dividir por el máximo absoluto.
+
+- En todos se observa sesgo negativo y por lo tanto la distribución es asimétrica.
+
+ - Al parecer, el resultado más suavizado de todos fué el devuelto por la discretización mediante Z-Score, seguido por Decimal Scaling.
+ 
+
+#### Fuentes:
+
+[Decscaling][09], [Boxplots][10], [Histogramas][11], [Densidades][12], [Heatmaps 1][13], [Heatmaps 2][14], [Biploting][15], [Agrupado de plots][16].
+
+[09]:https://www.rdocumentation.org/packages/dprep/versions/3.0.2/topics/decscale
+[10]:https://www.r-graph-gallery.com/265-grouped-boxplot-with-ggplot2.html
+[11]:http://www.sthda.com/english/wiki/ggplot2-histogram-plot-quick-start-guide-r-software-and-data-visualization
+[12]:https://www.r-graph-gallery.com/135-stacked-density-graph.html
+[13]:https://rpubs.com/htejero/212365
+[14]:https://learnr.wordpress.com/2010/01/26/ggplot2-quick-heatmap-plotting/
+[15]:https://github.com/vqv/ggbiplot
+[16]:https://stackoverflow.com/questions/1249548/side-by-side-plots-with-ggplot2
+
+
+
+
+
