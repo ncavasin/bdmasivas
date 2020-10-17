@@ -1,0 +1,64 @@
+<Schema name="dw_estudiantes">
+  <Dimension type="StandardDimension" visible="true" name="sexos">
+    <Hierarchy name="default" visible="true" hasAll="true">
+      <Table name="sexos" schema="public" alias="sexos_d">
+      </Table>
+      <Level name="sexo" visible="true" column="id_sexo" nameColumn="sexo" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="cohortes">
+    <Hierarchy name="default" visible="true" hasAll="true">
+      <Table name="cohortes" schema="public" alias="cohortes_d">
+      </Table>
+      <Level name="default" visible="true" column="id_cohortes" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="ciudades">
+    <Hierarchy name="New Hierarchy 0" visible="true" hasAll="true">
+      <Table name="ciudades" schema="public" alias="ciudades_d">
+      </Table>
+      <Level name="default" visible="true" column="id_ciudad" nameColumn="nombre_ciudad" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="planes">
+    <Hierarchy name="default" visible="true" hasAll="true">
+      <Table name="planes" schema="public" alias="planes_d">
+      </Table>
+      <Level name="default" visible="true" column="id_plan" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="sedes">
+    <Hierarchy name="default" visible="true" hasAll="true">
+      <Table name="sedes" schema="public" alias="sedes_d">
+      </Table>
+      <Level name="default" visible="true" column="id_sede" nameColumn="sede" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" name="cursadas">
+    <Hierarchy name="default" visible="true" hasAll="true">
+      <Table name="cursadas_2003_etl" schema="public" alias="cursadas_d">
+      </Table>
+      <Level name="default" visible="true" column="id_estudiante" uniqueMembers="false">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Cube name="estudiantes" visible="true" cache="true" enabled="true">
+    <Table name="rendimiento_academico" schema="public" alias="estudiantes_h">
+    </Table>
+    <DimensionUsage source="sexos" name="sexos" visible="true" foreignKey="id_sexo">
+    </DimensionUsage>
+    <DimensionUsage source="sedes" name="sedes" visible="true" foreignKey="id_sede">
+    </DimensionUsage>
+    <DimensionUsage source="planes" name="planes" visible="true" foreignKey="id_plan">
+    </DimensionUsage>
+    <DimensionUsage source="cohortes" name="cohortes" visible="true" foreignKey="id_cohortes">
+    </DimensionUsage>
+    <DimensionUsage source="ciudades" name="ciudades" visible="true" foreignKey="id_ciudad">
+    </DimensionUsage>
+  </Cube>
+</Schema>
