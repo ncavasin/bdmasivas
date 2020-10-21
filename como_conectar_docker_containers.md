@@ -1,6 +1,6 @@
 # Conectando servicios en diferentes contenedores
 
-1. Cuando se levanta un container por primera vez, al ejecutar ``docker-compose up``, se crea una red con el nombre del directorio en la que encuentra el archivo ``docker-compose.yaml`` y el sufijo *_default*.
+1. Cuando se levanta un container por primera vez, al ejecutar ``docker-compose up``, se crea una red con el nombre del directorio en el que se encuentra el archivo ``docker-compose.yaml`` y se agrega el sufijo *_default*.
 
    - Por ejemplo, si se ejecuta ``docker-compose up`` dentro del directorio *postgres/* se creará una red con el nombre **postgres_default**.
 
