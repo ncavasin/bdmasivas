@@ -1,0 +1,44 @@
+<Schema name="schema_medios">
+  <Dimension type="StandardDimension" visible="true" highCardinality="false" name="tipos_medio_d">
+    <Hierarchy name="Hierarchy" visible="true" hasAll="true">
+      <Table name="tipos_medio" schema="public">
+      </Table>
+      <Level name="tipos_medio" visible="true" column="id_tipo" nameColumn="descripcion" type="String" uniqueMembers="false" levelType="Regular" hideMemberIf="Never">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" highCardinality="false" name="ciudades_d">
+    <Hierarchy name="ciudades" visible="true" hasAll="true" primaryKey="id_ciudad" primaryKeyTable="ciudades">
+      <Join leftKey="id_provincia" rightKey="id_provincia">
+        <Table name="ciudades" schema="public">
+        </Table>
+        <Table name="provincias" schema="public">
+        </Table>
+      </Join>
+      <Level name="ciudades" visible="true" table="ciudades" column="id_ciudad" nameColumn="nombre" type="String" uniqueMembers="false" levelType="Regular" hideMemberIf="Never">
+      </Level>
+      <Level name="provincias" visible="true" table="provincias" column="id_provincia" nameColumn="nombre" type="String" uniqueMembers="false" levelType="Regular" hideMemberIf="Never">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Dimension type="StandardDimension" visible="true" highCardinality="false" name="especialidades_d">
+    <Hierarchy name="Hierarchy" visible="true" hasAll="true">
+      <Table name="especialidades" schema="public">
+      </Table>
+      <Level name="especialidades" visible="true" column="id_especialidad" nameColumn="descripcion" type="String" uniqueMembers="false" levelType="Regular" hideMemberIf="Never">
+      </Level>
+    </Hierarchy>
+  </Dimension>
+  <Cube name="medios" visible="true" cache="true" enabled="true">
+    <Table name="medios" schema="public">
+    </Table>
+    <DimensionUsage source="tipos_medio_d" name="tipos_medio" visible="true" foreignKey="id_tipo_medio" highCardinality="false">
+    </DimensionUsage>
+    <DimensionUsage source="especialidades_d" name="especialidades" visible="true" foreignKey="id_especialidad" highCardinality="false">
+    </DimensionUsage>
+    <DimensionUsage source="ciudades_d" name="ciudades" visible="true" foreignKey="id_ciudad" highCardinality="false">
+    </DimensionUsage>
+    <Measure name="cantidad_medios" column="id_medio" aggregator="count" visible="true">
+    </Measure>
+  </Cube>
+</Schema>

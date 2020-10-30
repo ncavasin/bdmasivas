@@ -1,9 +1,9 @@
 
-************************************ PUNTO 1A **********************************
+--************************************ PUNTO 1A **********************************
 
-=============================================
-QUERY DE RECONOCIMIENTO
-=============================================
+--=============================================
+--QUERY DE RECONOCIMIENTO
+--=============================================
 SELECT m.nombre AS "Nombre"
 	, t.descripcion AS "Tipo de medio"
 	, e.descripcion AS "Especialidad"
@@ -28,9 +28,9 @@ WHERE
 	OR t.descripcion LIKE '_uplementos'
 ORDER BY m.nombre ASC
 
-=============================================
-QUERY CON NORMALIZACION PARA REPORTE
-=============================================
+--=============================================
+--QUERY CON NORMALIZACION PARA REPORTE
+--=============================================
 SELECT 
 	CASE 
 			WHEN t.descripcion LIKE '_er%dico' THEN 'Periódico'
@@ -58,11 +58,11 @@ WHERE
 GROUP BY "Tipo de Medio"
 ORDER BY "Cantidad" DESC
 
-*********************************** PUNTO 1B ***********************************
+--*********************************** PUNTO 1B ***********************************
 
-=============================================
-QUERY DE RECONOCIMIENTO
-=============================================
+--=============================================
+--QUERY DE RECONOCIMIENTO
+--=============================================
 SELECT m.nombre AS "Nombre"
 	, t.descripcion AS "Tipo de medio"
 	, e.descripcion AS "Especialidad"
@@ -89,9 +89,9 @@ WHERE
 ORDER BY m.nombre ASC
 
 
-=============================================
-QUERY CON NORMALIZACION PARA REPORTE
-=============================================
+--=============================================
+--QUERY CON NORMALIZACION PARA REPORTE
+--=============================================
 SELECT 
 	CASE 
 			WHEN t.descripcion LIKE '_er%dico' THEN 'Periódico'
@@ -120,11 +120,11 @@ WHERE
 GROUP BY "Tipo de Medio"
 ORDER BY "Cantidad" DESC
 
-****************************** PUNTO 1C ****************************************
+--****************************** PUNTO 1C ****************************************
 
-=============================================
-QUERY CON NORMALIZACION PARA LISTADO
-=============================================
+--=============================================
+--QUERY CON NORMALIZACION PARA LISTADO
+--=============================================
 SELECT m.nombre AS "Nombre"
 	, t.descripcion AS "Tipo de medio"
 	, e.descripcion AS "Especialidad"
@@ -143,9 +143,9 @@ FROM medios AS m
 WHERE m.nombre LIKE 'M%'
 ORDER BY m.nombre ASC
 
-=============================================
-QUERY CON CANTIDAD PARA GRAFICO
-=============================================
+--=============================================
+--QUERY CON CANTIDAD PARA GRAFICO
+--=============================================
 SELECT p.nombre AS "Provincia"
 	, t.descripcion AS "Tipo de Medio"
 	, COUNT (m.nombre) as "Cantidad"
