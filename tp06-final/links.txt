@@ -6,3 +6,9 @@ IMDB: https://datasets.imdbws.com/
 
 virus chino: https://www.reddit.com/r/datasets/comments/exnzrd/coronavirus_datasets/
 
+datasets:
+https://www.kaggle.com/
+https://www.openml.org/search?type=data
+https://archive.ics.uci.edu/ml/index.php
+Deteccion de caras ===> http://vis-www.cs.umass.edu/lfw/
+
