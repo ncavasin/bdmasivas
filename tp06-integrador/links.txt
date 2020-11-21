@@ -12,3 +12,4 @@ https://www.openml.org/search?type=data
 https://archive.ics.uci.edu/ml/index.php
 Deteccion de caras ===> http://vis-www.cs.umass.edu/lfw/
 
+TODOS LOS AUTOS DE CRAIGSLIST: https://www.kaggle.com/austinreese/craigslist-carstrucks-data
