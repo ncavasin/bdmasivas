@@ -1,0 +1,58 @@
+---
+title: "ejercicio_2"
+author: "Nicolas Cavasin"
+date: "11/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Cargo la libreria a usar
+library(arules)
+library(arulesViz)
+```
+
+```{r}
+# Cargo el dataset
+data('Groceries')
+summary(Groceries)
+```
+
+
+```{r}
+# Muestro la distribucion de las primeras 10 transacciones 
+arules::itemFrequencyPlot(Groceries, topN = 15,  
+                          col = rainbow(15), 
+                          main = 'Top 15 items con mayor frecuencia de aparición', 
+                          ylab = "Frecuencia de cada item")
+```
+
+
+```{r}
+# Ejecuto el algoritmo e indico un nivel de soporte de 0.01 y un nivel de confianza de 0.3
+reglas <- apriori(Groceries, parameter = list(support=0.01, confidence=0.3, target = "rules"))
+
+# Top 10 reglas con mayor lift ordenados por confianza decreciente
+inspect(head(sort(reglas, by = 'confidence', decreasing = TRUE), n = 10, by = "lift"))
+
+plot(reglas, 
+     method = 'scatterplot',
+     measure = list("support", "confidence"), 
+     shading = 'lift', 
+     jitter = 0,
+     col = rev(brewer.pal(15, 'BuPu')),
+     xlab = 'Soporte',
+     ylab = 'Confianza',
+     title = 'Reglas')
+```
+
+```{r}
+# Busco todos los antecedentes de cerveza
+reglas_beer <- apriori(Groceries, parameter = list(support=0.01, confidence=0.01, target = "rules"), appearance = list(rhs="bottled beer"))
+
+# Top 10 reglas con mayor lift ordenados por confianza decreciente
+inspect(head(sort(reglas_beer, by = 'confidence', decreasing = TRUE), n = 10, by = "lift"))
+```
+
+

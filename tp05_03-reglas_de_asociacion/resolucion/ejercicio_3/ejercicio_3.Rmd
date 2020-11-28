@@ -1,0 +1,297 @@
+---
+title: "TP05_03 - Reglas de asociacion - Ejercicio_3"
+author: "Nicolas Cavasin"
+date: "11/27/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+# Cargo las librerias necesarias
+library(arules)
+library(arulesViz)
+library(ggplot2)
+
+# Leo como dataframe
+df <- read.csv("~/data/bank-full.csv", sep=";", header = TRUE)
+# Elimino los NAs
+df <- na.omit(df)
+```
+
+
+### Analizo variable *age*:
+```{r echo=FALSE}
+# Grafico histograma de age
+ggplot(df, aes(x=age)) +
+    geom_histogram(aes(y=..density..), 
+        color="darkblue", fill="lightblue", binwidth=.5) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'age'")
+
+# Lo guardo
+ggsave('hist_age.png', width = 8, height = 5)
+```
+```{r}
+# Aplico binning a ojo en age
+age_disc = discretize(df$age, method = "fixed", 
+                      breaks = c(-Inf, 26, 40, 60, Inf), 
+                      labels = c("joven", "adulto", "adulto-mayor", "vejez"))
+head(df$age)
+head(age_disc)
+```
+
+___
+
+
+### Analizo columna *balance*:
+```{r echo=FALSE}
+# Histograma de balance
+ggplot(df, aes(x=balance)) +
+    geom_histogram(aes(y=..density..), 
+        color="darkblue", fill="lightblue", bins=100) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'balance'")
+
+# Lo guardo
+ggsave('hist_balance.png', width = 8, height = 5)
+```
+```{r}
+# Discretizo balance a mano
+balance_disc <- discretize(df$balance,
+                           method = 'fixed',
+                           breaks = c(-Inf, 0, 100, 250, 1200, 2500, Inf),
+                           labels = list('negativo', 'muy bajo', 'bajo', 
+                                      'regular', 'alto', 'muy alto'))
+# Verifico si la discretizacion es buena
+head(df$balance, n = 10)
+head(balance_disc, n = 10)
+```
+
+### Analizo la columna *duration*:
+```{r echo=FALSE}
+# Histograma de duration
+ggplot(df, aes(x=duration)) +
+    geom_histogram(aes(y=..density..), 
+                    color="darkblue", fill="lightblue", bins = 30) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'duration'")
+
+ggsave('hist_duration.png', width = 8, height = 5)
+```
+```{r}
+# Discretizo duration por igual frecuencia
+duration_disc <- discretize(df$duration,
+                           method = 'frequency',
+                           breaks = 3,
+                           labels = list('corta', 'regular', 'larga'))
+# Verifico si la discretizacion es buena
+head(df$duration, n = 10)
+head(duration_disc, n = 10)
+```
+
+___
+
+
+### Analizo la columna *days*:
+```{r echo=FALSE}
+# Histograma de days
+ggplot(df, aes(x=day)) +
+    geom_histogram(aes(y=..density..), 
+                    color="darkblue", fill="lightblue", binwidth = 0.5) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'day'")
+
+ggsave('hist_day.png', width = 8, height = 5)
+```
+
+```{r}
+# Aplico binning a ojo en days
+day_disc <- discretize(df$day,
+                           method = "fixed",
+                           breaks = c(1, 8, 15, 21, Inf),
+                           labels = c('semana_1', 'semana_2', 'semana_3',
+                                        'semana_4'))
+tail(df$day, n = 10)
+tail(day_disc, n = 10)
+```
+
+___
+
+
+### Analizo la columna *campaign*:
+```{r echo=FALSE}
+# Histograma de campaign
+ggplot(df, aes(x=campaign)) +
+    geom_histogram(aes(y=..density..), 
+                    color="darkblue", fill="lightblue", bins = 50) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'campaign'")
+
+ggsave('hist_campaign.png', width = 8, height = 5)
+```
+```{r}
+# Discretizo campaign por igual frecuencia
+campaign_disc <- discretize(df$campaign,
+                           method = 'fixed',
+                           breaks = c(1, 2, 25, Inf),
+                           labels = c('unica', 'varias', 'muchas'))
+
+# Verifico si la discretizacion es buena
+head(df$campaign, n = 10)
+head(campaign_disc, n = 10)
+```
+
+___
+
+
+### Analizo columna *pdays*:
+
+```{r echo=FALSE}
+# Histograma de pdays
+ggplot(df, aes(x=pdays)) +
+    geom_histogram(aes(y=..density..), 
+                    color="darkblue", fill="lightblue", bins = 15) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'pdays'")
+
+ggsave('hist_pdays.png', width = 8, height = 5)
+```
+
+```{r}
+# Discretizo pdays a manopla
+pdays_disc <- discretize(df$pdays,
+                           method = 'fixed',
+                           breaks = c(-1, 0, 60, 120, Inf),
+                           labels = list('nunca', 'rapidamente', 'lentamente', 
+                                         'extremadamente_lento'))
+# Verifico si la discretizacion es buena
+tail(df$pdays, n = 10)
+tail(pdays_disc, n = 10)
+```
+
+___
+
+
+###  Analizo columna *previous*:
+
+```{r echo=FALSE}
+ggplot(df, aes(x=previous)) +
+    geom_histogram(aes(y=..density..), 
+                    color="darkblue", fill="lightblue", bins = 55) +
+    geom_density(alpha=0.2, fill="#FF6666") +
+    labs(y = "Frecuencia", title = "Histograma de 'previous'")
+
+ggsave('hist_previous.png', width = 8, height = 5)
+```
+
+```{r}
+previous_disc <- discretize(df$previous,
+                           method = 'fixed',
+                           breaks = c(-1, 1, 20, 50, Inf),
+                           labels = list('nunca', 'pocas', 'varias', 
+                                         'muchas'))
+tail(df$previous, n = 10)
+tail(previous_disc, n = 10)
+```
+
+___
+
+
+### Recreo el dataframe discretizado:
+```{r}
+# Recreo el dataset discretizado
+df_disc <-df
+
+# Convierto todo a factor
+df_disc$age <- as.factor(age_disc)
+df_disc$job <- as.factor(df$job)
+df_disc$marital <- as.factor(df$marital)
+df_disc$education <- as.factor(df$education)
+df_disc$default <- as.factor(df$default)
+df_disc$balance <- as.factor(balance_disc)
+df_disc$housing <- as.factor(df$housing)
+df_disc$loan <- as.factor(df$loan)
+df_disc$contact <- as.factor(df$contact)
+df_disc$day <- as.factor(day_disc)
+df_disc$month <- as.factor(df$month)
+df_disc$duration <- as.factor(duration_disc)
+df_disc$campaign <- as.factor(campaign_disc)
+df_disc$pdays <- as.factor(pdays_disc)
+df_disc$previous <- as.factor(previous_disc)
+df_disc$poutcome <- as.factor(df$poutcome)
+df_disc$y <- as.factor(df$y)
+
+# Lo muestro
+head(df_disc)
+```
+
+
+___
+
+
+### Lo convierto a *transactions* y muestro las primeras 3:
+```{r}
+# Convierto a transaction
+tx <- as(df_disc, 'transactions')
+
+# Muestro las primeras 10
+inspect(tx[1:3])
+```
+
+### Grafico top 10 de los ítems mas frecuentes:
+```{r, echo=FALSE}
+# Grafico
+arules::itemFrequencyPlot(tx, topN = 10,  
+                          col = rainbow(10), 
+                          main = 'Top 10 items con mayor frecuencia de aparición', 
+                          ylab = "Frecuencia de cada item")
+
+```
+
+
+### Genero las reglas de asociacion y muestro top 10 by lift:
+```{r}
+reglas <- apriori(tx, parameter = list(support = 0.1, 
+                                       confidence = 0.3,
+                                       target = 'rules'))
+
+# Top 10 reglas con mayor lift ordenados por confianza decreciente
+inspect(head(sort(reglas, 
+                  by = 'confidence', 
+                  decreasing = TRUE), 
+         n = 100, 
+         by = "lift"))
+
+```
+
+
+### Busco los antecedentes que determinan porque se rechaza el préstamo:
+```{r}
+reglas_no <- apriori(tx, parameter = list(support=0.1, 
+                                     confidence=0.2, 
+                                     target = "rules"), 
+                    appearance = list(rhs='y=no'))
+
+inspect(head(sort(reglas_no, 
+                  by = 'confidence', 
+                  decreasing = TRUE), 
+         n = 10, 
+         by = "lift"))
+```
+
+### Busco los antecedentes que determinan porque se acepta el préstamo:
+```{r}
+reglas_yes <- apriori(tx, parameter = list(support=0.01, 
+                                           confidence=0.3, 
+                                           target = "rules"), 
+                      appearance = list(rhs='y=yes'))
+
+inspect(head(sort(reglas_yes, 
+                  by = 'confidence', 
+                  decreasing = TRUE), 
+         n = 10, 
+         by = "lift"))
+```
+
+
