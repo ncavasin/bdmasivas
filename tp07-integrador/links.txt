@@ -13,3 +13,33 @@ https://archive.ics.uci.edu/ml/index.php
 Deteccion de caras ===> http://vis-www.cs.umass.edu/lfw/
 
 TODOS LOS AUTOS DE CRAIGSLIST: https://www.kaggle.com/austinreese/craigslist-carstrucks-data
+
+UBER PICKUPS IN NY: https://www.kaggle.com/fivethirtyeight/uber-pickups-in-new-york-city
+
+NIH CHEST X-RAYS (42GB): https://www.kaggle.com/nih-chest-xrays/data
+
+US ACCIDENTS 3.5M: https://www.kaggle.com/sobhanmoosavi/us-accidents
+
+NYC PARKING TICKETS: https://www.kaggle.com/new-york-city/nyc-parking-tickets
+
+NY TLC COMISSION: https://registry.opendata.aws/nyc-tlc-trip-records-pds/
+
+UK BIOBANK PAN-ANCESTRY STATS: https://registry.opendata.aws/broad-pan-ukb/
+
+EARTHQUAKE EARLY-WARNING SYSTEM: https://registry.opendata.aws/grillo-openeew/
+
+CALIFORNIA TRAFFIC COLLISIONS: https://www.kaggle.com/alexgude/california-traffic-collision-data-from-switrs
+
+F1 WORLD CHAMPIONSHIPS SINCE 1950: https://www.kaggle.com/rohanrao/formula-1-world-championship-1950-2020
+
+GOT: SCRIPTS BREAKDOWNS: https://www.kaggle.com/anderfj/game-of-thrones-series-scripts-breakdowns
+
+EUROPEAN SOCCER DATABASE: https://www.kaggle.com/hugomathien/soccer
+
+AWESOME DATA GITHUB: https://github.com/awesomedata/awesome-public-datasets
+
+CREDIT CARD FRAUD DETECTION: https://www.kaggle.com/mlg-ulb/creditcardfraud
+
+AMAZON COVID-19 DATA LAKE: https://registry.opendata.aws/aws-covid19-lake/
+
+DELITOS BA: https://data.buenosaires.gob.ar/dataset/delitos
